@@ -19,4 +19,5 @@ Initialization:
 >>> import sub20
 >>> subdev = sub20.SUBDevice()
 >>> subdev.open()
+
 Then you can use the wrapped sub20 functions in your code. To understand how to use them properly I strongly recommend to read the sub20 documentation first: http://www.xdimax.com/sub20/doc/sub20-man.pdf
