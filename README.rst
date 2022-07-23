@@ -10,7 +10,7 @@ You could find more information about the SUB-20 device on the official site: ht
 
 Requirements
 ------------
-You MUST have a sub20 library installed in your system. To proceed with the installation take a look at the SUB-20 documentaion:  http://www.xdimax.com/sub20/sub20.html. 
+You MUST have a sub20 library installed in your system. To proceed with the installation take a look at the SUB-20 documentaion:  http://www.xdimax.com/sub20/sub20.html.
 
 Usage
 -----
@@ -21,3 +21,5 @@ Initialization:
 >>> subdev.open()
 
 Then you can use the wrapped sub20 functions in your code. For you to understand how to use them properly I strongly recommend to read the sub20 documentation first: http://www.xdimax.com/sub20/doc/sub20-man.pdf
+
+If you don't have a sub20 in your system and you will try to create SUBDevice instance then you'll get an ImportError exception.
