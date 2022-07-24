@@ -1,4 +1,4 @@
-from ctypes import POINTER, Structure, c_char_p, c_int, c_double, c_ubyte
+from ctypes import POINTER, Structure, c_char_p, c_int, c_double, c_ubyte, c_void_p
 
 
 class sub_device(Structure):  # pylint: disable=invalid-name
@@ -35,6 +35,36 @@ class sub_i2c_hs_xfer(Structure):
 
 sub_i2c_hs_xfer_p = POINTER(sub_i2c_hs_xfer)
 
+
+class dll(Structure):
+    _fields_ = [("major", c_int),
+                ("minor", c_int),
+                ("micro", c_int),
+                ("nano", c_int)]
+
+
+class driver(Structure):
+    _fields_ = [("major", c_int),
+                ("minor", c_int),
+                ("micro", c_int),
+                ("nano", c_int)]
+
+
+class sub_device(Structure):
+    _fields_ = [("major", c_int),
+                ("minor", c_int),
+                ("micro", c_int),
+                ("nano", c_int)]
+
+
+class sub_version(Structure):
+    _fields_ = [("dll", dll),
+                ("driver", driver),
+                ("sub_device", sub_device)]
+
+
+sub_version_p = POINTER(sub_version)
+
 c_int_p = POINTER(c_int)
 
 SIGNATURES = dict(
@@ -42,7 +72,8 @@ SIGNATURES = dict(
     sub_open=([sub_device_p], sub_handle_p),
     sub_get_serial_number=([sub_handle_p, c_char_p], c_int),
     sub_get_product_id=([sub_handle_p, c_char_p], c_int),
-    sub_get_version=([sub_handle_p, c_char_p], c_int),
+    sub_get_version=([sub_handle_p], c_void_p),
+    sub_reset=([sub_handle_p], c_int),
 
     sub_eep_read=([sub_handle_p, c_int, c_char_p, c_int], c_int),
     sub_eep_write=([sub_handle_p, c_int, c_char_p, c_int], c_int),
@@ -60,13 +91,12 @@ SIGNATURES = dict(
     sub_bb_i2c_config=([sub_handle_p, c_int, c_int], c_int),
     sub_bb_i2c_scan=([sub_handle_p, c_int, c_int_p, c_char_p], c_int),
     sub_bb_i2c_read=([sub_handle_p, c_int, c_int, c_int, c_int, c_char_p, c_int], c_int),
-    sub_bb_i2c_write=([sub_handle_p,  c_int, c_int, c_int, c_int, c_char_p, c_int], c_int),
+    sub_bb_i2c_write=([sub_handle_p, c_int, c_int, c_int, c_int, c_char_p, c_int], c_int),
 
     sub_spi_config=([sub_handle_p, c_int, c_int_p], c_int),
     sub_spi_transfer=([sub_handle_p, c_char_p, c_char_p, c_int, c_int], c_int),
     sub_spi_transfer_ess=([sub_handle_p, c_char_p, c_char_p, c_int, c_char_p], c_int),
     sub_sdio_transfer=([sub_handle_p, c_char_p, c_char_p, c_int, c_int, c_int], c_int),
-
 
     sub_gpio_config=([sub_handle_p, c_int, c_int_p, c_int], c_int),
     sub_gpio_read=([sub_handle_p, c_int_p], c_int),

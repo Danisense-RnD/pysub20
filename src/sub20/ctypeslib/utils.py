@@ -15,4 +15,4 @@ def load_ctypes_library(name, signatures):
             function.argtypes = argtypes
             if restype:
                 function.restype = restype
-    return lib, c_int.in_dll(lib, "sub_errno")
+    return lib

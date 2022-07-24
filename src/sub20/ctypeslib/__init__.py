@@ -1,1 +1,1 @@
-from . import libsub20
+from . import libsub
