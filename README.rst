@@ -10,4 +10,11 @@ You could read more about the sub20 device on the official site: http://www.xdim
 
 Usage
 -----
+>>>import sub20
+
+>>>subdev = sub20.SUBDevice()
+
+>>>subdev.open()
+
+
 

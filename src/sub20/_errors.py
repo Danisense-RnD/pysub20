@@ -11,3 +11,7 @@ class SubNotFoundError(SubDeviceError):
 
 class I2CDevicesNotFoundError(SubDeviceError):
     __metaclass__ = abc.ABCMeta
+
+
+class SubNotOpenedError(SubDeviceError):
+    __metaclass__ = abc.ABCMeta
