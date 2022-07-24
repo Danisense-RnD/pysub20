@@ -20,14 +20,14 @@ Usage
 The low-level API is the raw Python functions converted from the SUB-20 C library functions.
 You can use them 'as is' with regard to the SUB-20 and Python c_types documentation.
 
->> from sub20.ctypeslib.libsub import SIGNATURES, sub_version
->> from sub20.ctypeslib.utils import load_ctypes_library
->> libname = "sub20.dll" if sys.platform == "win32" else "libsub.so"
->> libsub = load_ctypes_library(libname, SIGNATURES)
->> sub_errno = c_int.in_dll(libsub, "sub_errno")
+>>> from sub20.ctypeslib.libsub import SIGNATURES, sub_version
+>>> from sub20.ctypeslib.utils import load_ctypes_library
+>>> libname = "sub20.dll" if sys.platform == "win32" else "libsub.so"
+>>> libsub = load_ctypes_library(libname, SIGNATURES)
+>>> sub_errno = c_int.in_dll(libsub, "sub_errno")
 ... your code with SUB-20 functions
->> libsub.sub_open(None)
->> libsub.close()
+>>> libsub.sub_open(None)
+>>> libsub.close()
 
 **High-level API:**
 A high level API tries to hide routine operations under the hood and make the SUB-20 library more pythonic and simple. The core of the high-level API is SUBDevice class. You don't have to load libraries explicitly because it's happening during the class instantiation.
