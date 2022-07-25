@@ -1,6 +1,6 @@
-######
+#######
 pysub20
-######
+#######
 
 
 pysub20 is a LGPL licensed, simple pure Python binding for sub20 library: a software that allows PCs to work with a SUB-20 device.
@@ -41,7 +41,7 @@ Then you can use the implemented functions in your code. To properly use them it
 NB: If you don't have a sub20 library in your system and you try to create a SUBDevice instance then you'll get an ImportError exception.
 
 List of implemented functions:
------------------------------
+------------------------------
 
 sub_get_serial_number,
 sub_get_product_id,
