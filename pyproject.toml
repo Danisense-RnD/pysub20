@@ -48,3 +48,5 @@ path = "src/sub20/__init__.py"
 include = [
     "/src",
 ]
+[tool.hatch.build.targets.wheel]
+packages = ["src/sub20"]
