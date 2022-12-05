@@ -56,6 +56,8 @@ RS_RX_BEFORE_TX = 0x01
 RS_RX_AFTER_TX = 0x02
 
 FIFO_SELECT_UART = 0x02
+FIFO_CLEAR = 0x100
+FIFO_READ_FULL = 0x200
 
 I2C_GCE = 0x01
 I2C_DISABLE = 0x02
@@ -66,7 +68,7 @@ MAX_FREQ = 444444
 
 class SUBDevice(object):
 
-    def __init__(self, buffer_size=MAX_BUF_SZ):
+    def __init__(self):
         libname = 'sub20.dll' if sys.platform == "win32" \
             else 'libsub.so'
 
@@ -74,8 +76,6 @@ class SUBDevice(object):
         self.sub_errno = c_int.in_dll(self._libsub, "sub_errno")
         self.sub_i2c_status = c_int.in_dll(self._libsub, "sub_i2c_status")
         self._device = None
-        self.rx_buf_sz = buffer_size
-        self.rx_buf = create_string_buffer(buffer_size)
 
     def open(self):
         self._device = self._libsub.sub_open(None)
@@ -96,7 +96,7 @@ class SUBDevice(object):
             raise SubNotOpenedError()
         rx_buf_sz = MAX_BUF_SZ
         rx_buf = create_string_buffer(rx_buf_sz)
-        if self._libsub.sub_get_serial_number(self._device, rx_buf, rx_buf_sz):
+        if self._libsub.sub_get_serial_number(self._device, rx_buf, rx_buf_sz)<0:
             raise SubDeviceError(self.exc_str())
         return rx_buf.value.decode('UTF-8')
 
@@ -113,7 +113,7 @@ class SUBDevice(object):
             raise SubNotOpenedError()
         rx_buf_sz = MAX_BUF_SZ
         rx_buf = create_string_buffer(rx_buf_sz)
-        if self._libsub.sub_get_product_id(self._device, rx_buf, rx_buf_sz):
+        if self._libsub.sub_get_product_id(self._device, rx_buf, rx_buf_sz)<0:
             raise SubDeviceError(self.exc_str())
         return rx_buf.value.decode('UTF-8')
 
@@ -151,48 +151,45 @@ class SUBDevice(object):
         if self._libsub.sub_reset(self._device):
             raise SubDeviceError(self.exc_str())
 
-    def sub_eep_read(self, addr, sz=MAX_BUF_SZ):
+    def sub_eep_read(self, addr, sz):
         """
-        Read sz bytes (no more than 64(default value)) from internal EEPROM starting from the given address
+        Read sz bytes from internal EEPROM starting from the given address
         :param addr: The start address
         :type addr: int
-        :param sz:
+        :param sz: Read size in bytes
         :type sz: int
         :returns: buffer
         :rtype: bytes
-        :raises SubNotOpenedError:  if the device is not opened
-        :raises ValueError:  if sz > 64
+        :raises SubNotOpenedError: if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
 
         """
         if not self._device:
             raise SubNotOpenedError()
 
-        if sz > MAX_BUF_SZ:
-            raise ValueError("Maximal buffer size exceeded!")
-
-        if self._libsub.sub_eep_read(self._device, addr, self.rx_buf, sz):
+        rx_buf = create_string_buffer(sz)
+        if self._libsub.sub_eep_read(self._device, addr, rx_buf, sz):
             raise SubDeviceError(self.exc_str())
 
-        return self.rx_buf
+        return rx_buf
 
-    def sub_eep_write(self, addr, data: bytes):
+    def sub_eep_write(self, addr, data):
         """
-        Write data (with size no more than 64 bytes) to internal EEPROM starting from the given address
+        Write data to internal EEPROM starting from the given address. If more than 64 data bytes
+        are transmitted to the EEPROM, the data address will “roll over” and previous data will be overwritten. The
+        address “roll over” during write is from the last byte of the current page to the first byte of the same page.
+
         :param addr: The start address
         :type addr: int
         :param data:
-        :type data: int
+        :type data: bytes
         :raises SubNotOpenedError:  if the device is not opened
-        :raises ValueError:  if len(data) > 64
         :raises SubDeviceError: if the wrapped function returned the error code
 
         """
         if not self._device:
             raise SubNotOpenedError()
         tx_buf_sz = len(data)
-        if tx_buf_sz > MAX_BUF_SZ:
-            raise ValueError("Maximal buffer size exceeded!")
         tx_buf = create_string_buffer(data)
         if self._libsub.sub_eep_write(self._device, addr, tx_buf, tx_buf_sz):
             raise SubDeviceError(self.exc_str())
@@ -266,15 +263,17 @@ class SUBDevice(object):
         if not self._device:
             raise SubNotOpenedError()
         addresses = []
-
         counter = c_int(1)
-        rc = self._libsub.sub_i2c_scan(self._device, counter, self.rx_buf)
+
+        """ Create buffer for slave addresses - 7 bit number representing I2C slave device """
+        rx_buf = create_string_buffer(128)
+        rc = self._libsub.sub_i2c_scan(self._device, counter, rx_buf)
         if not rc:
             for ii in range(0, counter.value):
-                addresses.append(ord(self.rx_buf[ii]))
+                addresses.append(ord(rx_buf[ii]))
         return addresses
 
-    def sub_i2c_read(self, sa, ma, ma_sz, rx_buf_sz):
+    def sub_i2c_read(self, sa, ma, ma_sz, rx_sz):
         """
         I2C master read transaction.
 
@@ -284,10 +283,10 @@ class SUBDevice(object):
         :type ma: int
         :param ma_sz: memory address size bytes
         :type ma: int
-        :param rx_buf_sz: read data size bytes
-        :type rx_buf_sz: int
+        :param rx_sz: read data size bytes
+        :type rx_sz: int
         :returns: rx buffer
-        :rtype: bytes
+        :rtype: Array[c_char]
         :raises SubNotOpenedError:  if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
 
@@ -295,49 +294,47 @@ class SUBDevice(object):
         if not self._device:
             raise SubNotOpenedError()
 
-        rx_buf = create_string_buffer(rx_buf_sz)
-        _rc = self._libsub.sub_i2c_read(self._device, sa, ma, ma_sz, rx_buf, rx_buf_sz)
+        rx_buf = create_string_buffer(rx_sz)
+        _rc = self._libsub.sub_i2c_read(self._device, sa, ma, ma_sz, rx_buf, rx_sz)
         if _rc:
             raise SubDeviceError(self.exc_str())
-        return self.rx_buf
+        return rx_buf
 
-    def sub_i2c_write(self, sa, ma, ma_sz, data_buf, data_buf_sz):
+    def sub_i2c_write(self, sa, ma, ma_sz, data):
         """
         I2C master write transaction.
 
         :param sa: slave address for SUB-20 in I2C slave mode
-        :param ma: memory address
-        :param ma_sz: memory address size
-        :param data_buf: buffer for data to be written
-        :param data_buf_sz: data buffer size in bytes
-        :type data_buf: bytes
         :type sa: int
+        :param ma: memory address
         :type ma: int
+        :param ma_sz: memory address size
         :type ma_sz: int
-        :type data_buf_sz: int
+        :param data: buffer for data to be written
+        :type data: bytes
         :raises SubNotOpenedError:  if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
 
         """
         if not self._device:
             raise SubNotOpenedError()
-        if self._libsub.sub_i2c_read(self._device, sa, ma, ma_sz, data_buf, data_buf_sz):
+        tx_buf_sz = len(data)
+        tx_buf = create_string_buffer(data)
+        if self._libsub.sub_i2c_write(self._device, sa, ma, ma_sz, tx_buf, tx_buf_sz):
             raise SubDeviceError(self.exc_str())
 
-    def sub_i2c_transfer(self, sa, data_buf, data_size, rx_buf_sz):
+    def sub_i2c_transfer(self, sa, data, rx_buf_sz):
         """
         I2C master write transaction followed by master read transaction.
 
         :param sa: slave address for SUB-20 in I2C slave mode
         :type sa: int
-        :param data_buf: memory address
-        :type data_buf: int
-        :param data_size: memory address size
-        :type data_size: int
+        :param data: memory address
+        :type data: bytes
         :param rx_buf_sz: rx buffer size in bytes
         :type rx_buf_sz: int
         :returns: rx buffer
-        :rtype: bytes
+        :rtype: Array[c_char]
         :raises SubNotOpenedError:  if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
 
@@ -345,13 +342,15 @@ class SUBDevice(object):
         if not self._device:
             raise SubNotOpenedError()
         rx_buf = create_string_buffer(rx_buf_sz)
+        tx_buf_sz = len(data)
+        tx_buf = create_string_buffer(data)
 
-        if self._libsub.sub_i2c_transfer(self._device, sa, data_buf, data_size, rx_buf, rx_buf_sz):
+        if self._libsub.sub_i2c_transfer(self._device, sa, tx_buf, tx_buf_sz, rx_buf, rx_buf_sz):
             raise SubDeviceError(self.exc_str())
 
         return rx_buf
 
-    def sub_gpio_config(self, set_par: int, mask: int):
+    def sub_gpio_config(self, set_par, mask):
         """
         Configure GPIO state (direction) as input or output.
         :param set_par: Bits 0-31 of set parameter correspond to GPIO0-GPIO31 configuration bits. If GPIOn configuration bit is "1" then GPIOn direction is output, otherwise it is input.
@@ -407,7 +406,7 @@ class SUBDevice(object):
             raise SubDeviceError(self.exc_str())
         return get_par.value
 
-    def sub_gpiob_config(self, set_par: int, mask: int):
+    def sub_gpiob_config(self, set_par, mask):
 
         """
         Configure GPIOB state (direction) as input or output.
@@ -519,24 +518,23 @@ class SUBDevice(object):
         if _rc:
             raise SubDeviceError(self.exc_str())
 
-    def sub_rs_xfer(self, tx_buf, tx_sz, rx_buf_sz=MAX_BUF_SZ):
+    def sub_rs_xfer(self, data, rx_sz=MAX_BUF_SZ):
         """
         Transmit and/or receive message(s) via UART
-
-        :param tx_buf: buffer with data to be transmitted
-        :param tx_sz: number of bytes to transmit (can be 0 if transmit not required)
-        :param rx_buf_sz: maximal number of bytes to receive (can be 0 if reception is not required)
-        :returns: number of received bytes
-        :rtype: int
+        :param data: buffer with data to be transmitted
+        :param rx_sz: maximal number of bytes to receive (can be 0 if reception is not required)
+        :returns: Actually recieved bytes
+        :rtype: bytes
         :raises SubNotOpenedError:  if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
         """
         if not self._device:
             raise SubNotOpenedError()
-        _rc = self._libsub.sub_rs_xfer(self._device, tx_buf, tx_sz, self.rx_buf, rx_buf_sz)
+        rx_buf = create_string_buffer(rx_sz)
+        _rc = self._libsub.sub_rs_xfer(self._device, data, len(data), rx_buf, rx_sz)
         if _rc == -1:
             raise SubDeviceError(self.exc_str())
-        return _rc
+        return rx_buf[0:_rc]
 
     def sub_fifo_config(self, config):
         """
@@ -552,22 +550,24 @@ class SUBDevice(object):
         if _rc:
             raise SubDeviceError(self.exc_str())
 
-    def sub_fifo_read(self, to_ms):
+    def sub_fifo_read(self, sz, to_ms):
         """
-        Read 64 bytes from IN FIFO into buffer because this value is highly recommended by documentation
+        Read from IN FIFO into buffer
+        :param sz: read buffer size. You should not exceed 64 b
         :param to_ms: read timeout
-        :returns: read bytes
-        :rtype: int
+        :returns: Actually received bytes
+        :rtype: bytes
         :raises SubNotOpenedError:  if the device is not opened
         :raises SubDeviceError: if the wrapped function returned the error code
 
         """
         if not self._device:
             raise SubNotOpenedError()
-        _rc = self._libsub.sub_fifo_read(self._device, self.rx_buf, self.rx_buf_sz, to_ms)
+        rx_buf = create_string_buffer(sz)
+        _rc = self._libsub.sub_fifo_read(self._device, rx_buf, sz, to_ms)
         if _rc < 0:
             raise SubDeviceError(self.exc_str())
-        return _rc
+        return rx_buf[0:_rc]
 
     def sub_fifo_write(self, data_buf, sz, to_ms):
         """

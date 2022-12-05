@@ -1,4 +1,4 @@
-from ctypes import CDLL, c_int
+from ctypes import CDLL
 
 sub_errno = None
 
