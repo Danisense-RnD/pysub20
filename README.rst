@@ -74,4 +74,34 @@ strerror
 
 Examples
 -------------
-Under construction
+Get the list of all sub20 devices in the system:
+
+>>> from ctypes import create_string_buffer, c_int
+>>> from sub20.ctypeslib.libsub import SIGNATURES
+>>> from sub20.ctypeslib.utils import load_ctypes_library
+>>>
+>>>
+>>> def get_sub20_devs(_libsub):
+>>>    sub20devs = []
+>>>    _device = _libsub.sub_find_devices(None)
+>>>    while _device:
+>>>        _handler = _libsub.sub_open(_device)
+>>>        if _handler:
+>>>            sub20devs.append(_handler)
+>>>        _device = _libsub.sub_find_devices(_device)
+>>>    return sub20devs
+>>>
+>>>
+>>> BUFFER_SIZE = 64
+>>> MAX_BUF_SZ = 64
+>>> libsub = load_ctypes_library("sub20.dll", SIGNATURES)
+>>> sub_errno = c_int.in_dll(libsub, "sub_errno")
+>>> rx_buf_sz = MAX_BUF_SZ
+>>> rx_buf = create_string_buffer(rx_buf_sz)
+>>> evs = get_sub20_devs(libsub)
+... Then you can do with handlers whatever you want: for example, get all serial numbers
+>>> for dev in devs:
+>>>    if libsub.sub_get_serial_number(dev, rx_buf, rx_buf_sz) < 0:
+>>>        print("Error")
+>>>        continue
+>>>    print(rx_buf.value.decode('UTF-8'))

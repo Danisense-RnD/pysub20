@@ -4,4 +4,4 @@ from sub20._errors import (
     I2CDevicesNotFoundError
 )
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
