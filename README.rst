@@ -146,4 +146,4 @@ print(rc)
 ```
 
 **How to install**
-run command ```pip install .```
+run command ``pip install .``
