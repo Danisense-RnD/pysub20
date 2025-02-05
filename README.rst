@@ -145,3 +145,7 @@ rc = libsub.sub_mdio_xfer(hndl, frame_count, mdios_array)
 print(rc)
 ```
 
+**How to install**
+run command 
+``pip install .`` or if placed in a subfolder
+``pip install submodulePath/.``

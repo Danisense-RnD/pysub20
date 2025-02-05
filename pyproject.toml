@@ -8,7 +8,6 @@ build-backend = "hatchling.build"
 name = "pysub20"
 description = "Python wrapper around XDIMAX SUB-20 library"
 readme = "README.rst"
-license = ""
 requires-python = ">=3.6"
 authors = [
     { name = "Paul Grebeniuk", email = "paul@coolautomation.com" },
