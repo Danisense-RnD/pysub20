@@ -146,4 +146,6 @@ print(rc)
 ```
 
 **How to install**
-run command ``pip install .``
+run command 
+``pip install .`` or if placed in a subfolder
+``pip install submodulePath/.``
